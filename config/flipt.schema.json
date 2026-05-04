@@ -1167,6 +1167,19 @@
                 "type",
                 "github_app"
               ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "const": "aws_code_connections"
+                }
+              },
+              "required": [
+                "type",
+                "aws_code_connections"
+              ]
             }
           ]
         }

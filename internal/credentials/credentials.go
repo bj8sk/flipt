@@ -15,6 +15,10 @@ import (
 	"go.flipt.io/flipt/internal/config"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/ssh"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/codeconnections"
 )
 
 type CredentialSource struct {
@@ -38,6 +42,25 @@ func (s *CredentialSource) Get(name string) (*Credential, error) {
 type Credential struct {
 	logger *zap.Logger
 	config *config.CredentialConfig
+}
+
+func getCodeConnectionsToken(ctx context.Context, connArn string, region string) (string, time.Time, error) {
+	// Load AWS config (IRSA will be used automatically)
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(region))
+	if err != nil {
+		return "", time.Time{}, fmt.Errorf("failed to load AWS config: %w", err)
+	}
+
+	client := codeconnections.NewFromConfig(cfg)
+
+	resp, err := client.GetConnectionToken(ctx, &codeconnections.GetConnectionTokenInput{
+		ConnectionArn: aws.String(connArn),
+	})
+	if err != nil {
+		return "", time.Time{}, fmt.Errorf("failed to get connection token: %w", err)
+	}
+
+	return aws.ToString(resp.Token), aws.ToTime(resp.ExpiresAt), nil
 }
 
 // GitAuthentication returns the appropriate client.Option for Git operations.
@@ -97,6 +120,24 @@ func (c *Credential) GitAuthentication() (client.Option, error) {
 			return nil, err
 		}
 		return client.WithHTTPAuth(gha), err
+	case config.CredentialTypeAWSCodeConnections:
+		roleArn := os.Getenv("AWS_ROLE_ARN")
+		if roleArn == "" {
+			return nil, fmt.Errorf("AWS_ROLE_ARN environment variable is not set")
+		}
+		region := os.Getenv("AWS_REGION")
+		if region == "" {
+			return nil, fmt.Errorf("AWS_REGION environment variable is not set")
+		}
+		token, expiresAt, err := getCodeConnectionsToken(context.Background(), roleArn, region)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get AWS Code Connections token: %w", err)
+		}
+		c.logger.Info("obtained AWS Code Connections token", zap.String("connection_arn", roleArn), zap.Time("expires_at", expiresAt))
+		return client.WithHTTPAuth(&githttp.BasicAuth{
+			Username: "x-token-auth",
+			Password: token,
+		}), nil
 	}
 
 	return nil, fmt.Errorf("unexpected credential type: %q", c.config.Type)

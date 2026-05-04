@@ -277,7 +277,11 @@ JsonPath: string
 			private_key_bytes: string
 			api_url?:          string
 		}
+	} | {
+		type: "aws_code_connections"
+		aws_code_connections: {}
 	}
+		
 
 	_#lower: ["debug", "error", "fatal", "info", "panic", "warn"]
 	_#all: list.Concat([_#lower, [for x in _#lower {strings.ToUpper(x)}]])

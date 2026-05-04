@@ -57,6 +57,7 @@ const (
 	CredentialTypeSSH         = CredentialType("ssh")
 	CredentialTypeAccessToken = CredentialType("access_token")
 	CredentialTypeGithubApp   = CredentialType("github_app")
+	CredentialTypeAWSCodeConnections = CredentialType("aws_code_connections")
 )
 
 // GitHubAppConfig provides configuration for GitHub App authentication.
@@ -121,6 +122,16 @@ func (c *CredentialConfig) validate() error {
 
 		if err := c.GitHubApp.validate(); err != nil {
 			return errFieldWrap("credentials", "github_app", err)
+		}
+	case CredentialTypeAWSCodeConnections:
+		{
+			// For AWS Code Connections, we require the AWS_ROLE_ARN environment variable to be set at runtime.
+			roleArn := os.Getenv("AWS_ROLE_ARN")
+			if roleArn == "" {
+				return fmt.Errorf("AWS_ROLE_ARN environment variable is not set")
+			}
+			// We won't validate the ARN format here, but we could add additional checks if desired.
+			// For example, we could check that it starts with "arn:aws:iam::" and contains ":role/".
 		}
 	default:
 		return errFieldWrap("credentials", "type", fmt.Errorf("unexpected credential type %q", c.Type))

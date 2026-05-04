@@ -100,4 +100,25 @@ func TestCredentialConfig_Validate_GitHubApp(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "github_app installation_id")
 	})
+
+	// Test AWS Code Connections
+	t.Run("missing AWS_ROLE_ARN", func(t *testing.T) {
+		config := CredentialConfig{
+			Type: CredentialTypeAWSCodeConnections,
+		}
+		err := config.validate()
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "AWS_ROLE_ARN environment variable is not set")
+	})
+
+	t.Run("valid AWS Code Connections config", func(t *testing.T) {
+		// Set the environment variable for the test
+		t.Setenv("AWS_ROLE_ARN", "arn:aws:iam::123456789012:role/test-role")
+
+		config := CredentialConfig{
+			Type: CredentialTypeAWSCodeConnections,
+		}
+		err := config.validate()
+		require.NoError(t, err)
+	}
 }
