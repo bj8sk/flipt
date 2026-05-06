@@ -15,7 +15,6 @@ import (
 	"go.flipt.io/flipt/internal/config"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/ssh"
-
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/codeconnections"
